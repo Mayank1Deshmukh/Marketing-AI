@@ -49,8 +49,8 @@ router.post("/profile", async (req, res) => {
     secretSauce: string;
   };
 
-  if (!body.businessName || !body.city || !body.offerings || !body.brandVoice || !body.secretSauce) {
-    res.status(400).json({ error: "Missing required profile fields: businessName, city, offerings, brandVoice, secretSauce" });
+  if (!body.businessName || !body.city || !body.neighborhoods || !body.offerings || !body.brandVoice || !body.secretSauce) {
+    res.status(400).json({ error: "Missing required profile fields: businessName, city, neighborhoods, offerings, brandVoice, secretSauce" });
     return;
   }
 

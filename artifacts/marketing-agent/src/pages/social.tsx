@@ -121,8 +121,26 @@ export function SocialTrack() {
                 <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-wider mb-4 flex items-center gap-2">
                   <Target className="h-4 w-4" /> Stage 1: Proximity Framework
                 </h3>
-                <div className="text-sm bg-white dark:bg-black/20 p-4 rounded-md border border-border/40 text-muted-foreground italic">
-                  {result.framework}
+                <div className="text-sm bg-white dark:bg-black/20 p-4 rounded-md border border-border/40 space-y-2">
+                  {(() => {
+                    try {
+                      const fw = JSON.parse(result.framework) as Record<string, string>;
+                      const labels: Record<string, string> = {
+                        primaryGeoHook: "Primary Geo Hook",
+                        physicalAnchor: "Physical Anchor",
+                        emotionalPull: "Emotional Pull",
+                        localUrgency: "Local Urgency",
+                      };
+                      return Object.entries(fw).map(([k, v]) => (
+                        <div key={k} className="flex gap-2">
+                          <span className="text-muted-foreground font-medium shrink-0 w-36">{labels[k] ?? k}:</span>
+                          <span className="text-foreground">{v}</span>
+                        </div>
+                      ));
+                    } catch {
+                      return <span className="text-muted-foreground italic">{result.framework}</span>;
+                    }
+                  })()}
                 </div>
               </div>
 
