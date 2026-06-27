@@ -1,15 +1,16 @@
-import { useEffect, useState } from "react";
-import { Link, useLocation } from "wouter";
+import { useEffect } from "react";
+import { Link } from "wouter";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { MapPin, Star, Megaphone, CheckCircle2, ChevronRight, Briefcase, Loader2 } from "lucide-react";
+import { MapPin, Star, Megaphone, CheckCircle2, ChevronRight, Briefcase, Loader2, LogIn } from "lucide-react";
+import { useAuth } from "@clerk/react";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   BusinessProfile,
   BusinessProfileSchema,
-  resolveProfileId,
-  persistProfileId,
 } from "@/lib/profile";
-import { useGetProfile, useSaveProfile } from "@workspace/api-client-react";
+import { useSaveProfile } from "@workspace/api-client-react";
+import { useMyProfile, MY_PROFILE_QUERY_KEY } from "@/hooks/useMyProfile";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -20,9 +21,9 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 
 export function Home() {
-  const [_, setLocation] = useLocation();
   const { toast } = useToast();
-  const [hasProfile, setHasProfile] = useState(false);
+  const { isSignedIn } = useAuth();
+  const queryClient = useQueryClient();
 
   const form = useForm<BusinessProfile>({
     resolver: zodResolver(BusinessProfileSchema),
@@ -37,41 +38,34 @@ export function Home() {
     },
   });
 
-  // -- Load saved profile on mount (URL param or localStorage) --
-  const profileId = resolveProfileId();
-  const { data: loadedProfile, isLoading: isLoadingProfile } = useGetProfile(
-    profileId ?? "",
-    { query: { enabled: !!profileId, queryKey: profileId ? ["profile", profileId] : [] } },
-  );
+  const { data: myProfile, isLoading: isLoadingProfile } = useMyProfile();
+  const hasProfile = !!myProfile;
 
   useEffect(() => {
-    if (loadedProfile) {
+    if (myProfile) {
       form.reset({
-        businessName: loadedProfile.businessName,
-        city: loadedProfile.city,
-        neighborhoods: loadedProfile.neighborhoods,
-        landmarks: loadedProfile.landmarks ?? "",
-        offerings: loadedProfile.offerings,
-        brandVoice: loadedProfile.brandVoice as BusinessProfile["brandVoice"],
-        secretSauce: loadedProfile.secretSauce,
+        businessName: myProfile.businessName,
+        city: myProfile.city,
+        neighborhoods: myProfile.neighborhoods,
+        landmarks: myProfile.landmarks ?? "",
+        offerings: myProfile.offerings,
+        brandVoice: myProfile.brandVoice as BusinessProfile["brandVoice"],
+        secretSauce: myProfile.secretSauce,
       });
-      setHasProfile(true);
     }
-  }, [loadedProfile, form]);
+  }, [myProfile, form]);
 
-  // -- Save profile to Supabase --
   const saveProfileApi = useSaveProfile();
 
   const onSubmit = (data: BusinessProfile) => {
     saveProfileApi.mutate(
       { data },
       {
-        onSuccess: (saved) => {
-          persistProfileId(saved.id);
-          setHasProfile(true);
+        onSuccess: () => {
+          queryClient.invalidateQueries({ queryKey: [...MY_PROFILE_QUERY_KEY] });
           toast({
             title: "Profile Saved",
-            description: `Your business profile is now stored with ID ${saved.id.slice(0, 8)}...`,
+            description: "Your business profile has been saved to your account.",
             duration: 3000,
           });
         },
@@ -229,11 +223,21 @@ export function Home() {
                     )}
                   />
 
+                  {!isSignedIn && (
+                    <div className="flex items-center gap-3 p-3 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-800">
+                      <LogIn className="h-4 w-4 shrink-0" />
+                      <span>
+                        <Link href="/sign-in" className="underline font-semibold hover:text-amber-900">Sign in</Link>
+                        {" "}to save your profile and access the AI tools.
+                      </span>
+                    </div>
+                  )}
+
                   <Button
                     type="submit"
                     className="w-full font-medium"
                     data-testid="button-save-profile"
-                    disabled={saveProfileApi.isPending}
+                    disabled={saveProfileApi.isPending || !isSignedIn}
                   >
                     {saveProfileApi.isPending ? (
                       <span className="flex items-center gap-2"><Loader2 className="h-4 w-4 animate-spin" /> Saving...</span>

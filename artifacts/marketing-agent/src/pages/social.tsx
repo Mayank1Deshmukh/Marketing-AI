@@ -1,9 +1,9 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useLocation } from "wouter";
-import { useGenerateSocialAd, useGetProfile } from "@workspace/api-client-react";
+import { useGenerateSocialAd } from "@workspace/api-client-react";
 import type { SocialInputPlatform, Profile } from "@workspace/api-client-react";
 import { Megaphone, Target } from "lucide-react";
-import { resolveProfileId } from "@/lib/profile";
+import { useMyProfile } from "@/hooks/useMyProfile";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -14,12 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 export function SocialTrack() {
   const [_, setLocation] = useLocation();
   const [platform, setPlatform] = useState<SocialInputPlatform>("instagram");
-
-  const profileId = resolveProfileId();
-  const { data: profile, isLoading: isLoadingProfile } = useGetProfile(
-    profileId ?? "",
-    { query: { enabled: !!profileId, queryKey: profileId ? ["profile", profileId] : [] } },
-  );
+  const { data: profile, isLoading: isLoadingProfile } = useMyProfile();
 
   const generateAd = useGenerateSocialAd();
   const [result, setResult] = useState<{
@@ -29,13 +24,6 @@ export function SocialTrack() {
     hashtags: string[];
   } | null>(null);
 
-  useEffect(() => {
-    if (!profileId) {
-      setLocation("/");
-    }
-  }, [profileId, setLocation]);
-
-  if (!profileId) return null;
   if (isLoadingProfile) {
     return (
       <div className="max-w-3xl mx-auto space-y-6">
@@ -44,6 +32,7 @@ export function SocialTrack() {
       </div>
     );
   }
+
   if (!profile) {
     return (
       <div className="max-w-3xl mx-auto text-center py-12">

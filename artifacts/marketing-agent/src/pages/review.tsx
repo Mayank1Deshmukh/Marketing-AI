@@ -1,8 +1,8 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useLocation } from "wouter";
-import { useGenerateReviewResponse, useGetProfile } from "@workspace/api-client-react";
+import { useGenerateReviewResponse } from "@workspace/api-client-react";
 import { Star, MessageSquareQuote } from "lucide-react";
-import { resolveProfileId } from "@/lib/profile";
+import { useMyProfile } from "@/hooks/useMyProfile";
 import type { Profile } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -14,12 +14,7 @@ import { EscapeValve } from "@/components/escape-valve";
 export function ReviewTrack() {
   const [_, setLocation] = useLocation();
   const [reviewText, setReviewText] = useState("");
-
-  const profileId = resolveProfileId();
-  const { data: profile, isLoading: isLoadingProfile } = useGetProfile(
-    profileId ?? "",
-    { query: { enabled: !!profileId, queryKey: profileId ? ["profile", profileId] : [] } },
-  );
+  const { data: profile, isLoading: isLoadingProfile } = useMyProfile();
 
   const generateResponse = useGenerateReviewResponse();
   const [result, setResult] = useState<{
@@ -28,13 +23,6 @@ export function ReviewTrack() {
     response: string;
   } | null>(null);
 
-  useEffect(() => {
-    if (!profileId) {
-      setLocation("/");
-    }
-  }, [profileId, setLocation]);
-
-  if (!profileId) return null;
   if (isLoadingProfile) {
     return (
       <div className="max-w-3xl mx-auto space-y-6">
@@ -43,6 +31,7 @@ export function ReviewTrack() {
       </div>
     );
   }
+
   if (!profile) {
     return (
       <div className="max-w-3xl mx-auto text-center py-12">

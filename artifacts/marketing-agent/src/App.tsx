@@ -1,9 +1,10 @@
 import { useEffect, useRef } from "react";
-import { ClerkProvider, SignIn, SignUp, Show, useClerk } from "@clerk/react";
+import { ClerkProvider, SignIn, SignUp, Show, useClerk, useAuth } from "@clerk/react";
 import { publishableKeyFromHost } from "@clerk/react/internal";
 import { shadcn } from "@clerk/themes";
 import { Switch, Route, useLocation, Router as WouterRouter, Redirect } from "wouter";
 import { QueryClient, QueryClientProvider, useQueryClient } from "@tanstack/react-query";
+import { setAuthTokenGetter } from "@workspace/api-client-react";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Layout } from "@/components/layout";
@@ -78,15 +79,21 @@ const clerkAppearance = {
     dividerLine: "bg-slate-200",
     alert: "bg-red-50 border-red-200",
     otpCodeFieldInput: "border-slate-200",
-    formFieldRow: "",
-    main: "",
   },
 };
 
 function SignInPage() {
+  const [location] = useLocation();
+  const params = new URLSearchParams(location.split("?")[1] ?? "");
+  const redirectUrl = params.get("redirect_url") || "/";
   return (
     <div className="flex min-h-[100dvh] items-center justify-center bg-background px-4">
-      <SignIn routing="path" path={`${basePath}/sign-in`} signUpUrl={`${basePath}/sign-up`} />
+      <SignIn
+        routing="path"
+        path={`${basePath}/sign-in`}
+        signUpUrl={`${basePath}/sign-up`}
+        fallbackRedirectUrl={redirectUrl}
+      />
     </div>
   );
 }
@@ -100,18 +107,32 @@ function SignUpPage() {
 }
 
 function ProtectedRoute({ component: Component }: { component: React.ComponentType }) {
+  const [location] = useLocation();
   return (
     <>
       <Show when="signed-in">
         <Component />
       </Show>
       <Show when="signed-out">
-        <Redirect to="/sign-in" />
+        <Redirect to={`/sign-in?redirect_url=${encodeURIComponent(location)}`} />
       </Show>
     </>
   );
 }
 
+/** Wires Clerk's getToken() into the API client so every request carries a Bearer token. */
+function ClerkAuthSync() {
+  const { getToken } = useAuth();
+
+  useEffect(() => {
+    setAuthTokenGetter(() => getToken());
+    return () => setAuthTokenGetter(null);
+  }, [getToken]);
+
+  return null;
+}
+
+/** Clears React Query cache whenever the signed-in user changes. */
 function ClerkQueryClientCacheInvalidator() {
   const { addListener } = useClerk();
   const qc = useQueryClient();
@@ -159,6 +180,7 @@ function AppRoutes() {
       routerReplace={(to) => setLocation(stripBase(to), { replace: true })}
     >
       <QueryClientProvider client={queryClient}>
+        <ClerkAuthSync />
         <ClerkQueryClientCacheInvalidator />
         <TooltipProvider>
           <Layout>

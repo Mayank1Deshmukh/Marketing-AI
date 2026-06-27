@@ -1,8 +1,8 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useLocation } from "wouter";
-import { useGenerateGmbUpdate, useGetProfile } from "@workspace/api-client-react";
+import { useGenerateGmbUpdate } from "@workspace/api-client-react";
 import { MapPin, Info } from "lucide-react";
-import { resolveProfileId } from "@/lib/profile";
+import { useMyProfile } from "@/hooks/useMyProfile";
 import type { Profile } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -12,12 +12,7 @@ import { EscapeValve } from "@/components/escape-valve";
 
 export function GmbTrack() {
   const [_, setLocation] = useLocation();
-
-  const profileId = resolveProfileId();
-  const { data: profile, isLoading: isLoadingProfile } = useGetProfile(
-    profileId ?? "",
-    { query: { enabled: !!profileId, queryKey: profileId ? ["profile", profileId] : [] } },
-  );
+  const { data: profile, isLoading: isLoadingProfile } = useMyProfile();
 
   const generateGmb = useGenerateGmbUpdate();
   const [result, setResult] = useState<{
@@ -26,13 +21,6 @@ export function GmbTrack() {
     disclaimer: string;
   } | null>(null);
 
-  useEffect(() => {
-    if (!profileId) {
-      setLocation("/");
-    }
-  }, [profileId, setLocation]);
-
-  if (!profileId) return null;
   if (isLoadingProfile) {
     return (
       <div className="max-w-3xl mx-auto space-y-6">
@@ -41,6 +29,7 @@ export function GmbTrack() {
       </div>
     );
   }
+
   if (!profile) {
     return (
       <div className="max-w-3xl mx-auto text-center py-12">
