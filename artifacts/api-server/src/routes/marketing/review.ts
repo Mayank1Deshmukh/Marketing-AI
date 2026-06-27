@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { openai } from "@workspace/integrations-openai-ai-server";
+import { generate } from "../../lib/gemini";
 import {
   reviewStage1Prompt,
   reviewStage2Prompt,
@@ -26,19 +26,11 @@ router.post("/review", async (req, res) => {
     const hasReview = reviewText && reviewText.trim().length > 0;
 
     if (hasReview) {
-      // Stage 1: Sentiment parsing — extract specific praise or friction points
-      const stage1Response = await openai.chat.completions.create({
-        model: "gpt-5-mini",
-        max_completion_tokens: 256,
-        messages: [{ role: "user", content: reviewStage1Prompt(reviewText) }],
-      });
-
-      const stage1Text = stage1Response.choices[0]?.message?.content ?? "{}";
+      // Stage 1: Sentiment parsing
+      const stage1Text = await generate(reviewStage1Prompt(reviewText));
       try {
-        const parsed = JSON.parse(stage1Text) as {
-          sentiment: string;
-          highlights: string[];
-        };
+        const cleaned = stage1Text.replace(/```json\n?|\n?```/g, "").trim();
+        const parsed = JSON.parse(cleaned) as { sentiment: string; highlights: string[] };
         sentiment = parsed.sentiment ?? null;
         highlights = parsed.highlights ?? [];
       } catch {
@@ -47,24 +39,10 @@ router.post("/review", async (req, res) => {
       }
     }
 
-    // Stage 2: Generate brand-voice-matched response (or fallback if no review)
-    const stage2Response = await openai.chat.completions.create({
-      model: "gpt-5-mini",
-      max_completion_tokens: 512,
-      messages: [
-        {
-          role: "user",
-          content: reviewStage2Prompt(
-            profile,
-            reviewText ?? null,
-            sentiment,
-            highlights,
-          ),
-        },
-      ],
-    });
-
-    const response = stage2Response.choices[0]?.message?.content?.trim() ?? "";
+    // Stage 2: Generate brand-voice-matched response
+    const response = (
+      await generate(reviewStage2Prompt(profile, reviewText ?? null, sentiment, highlights))
+    ).trim();
 
     res.json({ sentiment, highlights, response });
   } catch (err) {

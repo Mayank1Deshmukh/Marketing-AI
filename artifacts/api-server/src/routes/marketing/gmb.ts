@@ -1,10 +1,6 @@
 import { Router } from "express";
-import { openai } from "@workspace/integrations-openai-ai-server";
-import {
-  gmbStage1Prompt,
-  gmbStage2Prompt,
-  type BusinessProfile,
-} from "./prompts";
+import { generate } from "../../lib/gemini";
+import { gmbStage1Prompt, gmbStage2Prompt, type BusinessProfile } from "./prompts";
 
 const router = Router();
 
@@ -21,28 +17,17 @@ router.post("/gmb", async (req, res) => {
     }
 
     // Stage 1: Enrichment — surface 2-3 localized SEO concepts
-    const stage1Response = await openai.chat.completions.create({
-      model: "gpt-5-mini",
-      max_completion_tokens: 256,
-      messages: [{ role: "user", content: gmbStage1Prompt(profile) }],
-    });
-
-    const stage1Text = stage1Response.choices[0]?.message?.content ?? "[]";
+    const stage1Text = await generate(gmbStage1Prompt(profile));
     let concepts: string[] = [];
     try {
-      concepts = JSON.parse(stage1Text);
+      const cleaned = stage1Text.replace(/```json\n?|\n?```/g, "").trim();
+      concepts = JSON.parse(cleaned);
     } catch {
       concepts = [stage1Text];
     }
 
     // Stage 2: Generate keyword-dense GMB update with local CTA
-    const stage2Response = await openai.chat.completions.create({
-      model: "gpt-5-mini",
-      max_completion_tokens: 512,
-      messages: [{ role: "user", content: gmbStage2Prompt(profile, concepts) }],
-    });
-
-    const update = stage2Response.choices[0]?.message?.content?.trim() ?? "";
+    const update = (await generate(gmbStage2Prompt(profile, concepts))).trim();
 
     res.json({ concepts, update, disclaimer: DISCLAIMER });
   } catch (err) {

@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { openai } from "@workspace/integrations-openai-ai-server";
+import { generate } from "../../lib/gemini";
 import {
   socialStage1Prompt,
   socialStage2InstagramPrompt,
@@ -26,14 +26,8 @@ router.post("/social", async (req, res) => {
       return;
     }
 
-    // Stage 1: Proximity frameworking — structure geographic details into copy hooks
-    const stage1Response = await openai.chat.completions.create({
-      model: "gpt-5-mini",
-      max_completion_tokens: 256,
-      messages: [{ role: "user", content: socialStage1Prompt(profile, platform) }],
-    });
-
-    const stage1Text = stage1Response.choices[0]?.message?.content ?? "{}";
+    // Stage 1: Proximity frameworking
+    const stage1Text = await generate(socialStage1Prompt(profile, platform));
     let framework: {
       primaryGeoHook: string;
       physicalAnchor: string;
@@ -47,35 +41,24 @@ router.post("/social", async (req, res) => {
     };
 
     try {
-      framework = JSON.parse(stage1Text);
+      const cleaned = stage1Text.replace(/```json\n?|\n?```/g, "").trim();
+      framework = JSON.parse(cleaned);
     } catch {
       // keep defaults
     }
 
     const frameworkStr = JSON.stringify(framework);
 
-    // Stage 2: Generate platform-ready copy
+    // Stage 2: Platform-ready copy
     let instagramCaption: string | null = null;
     let adCopy: string | null = null;
     let hashtags: string[] = [];
 
     if (platform === "instagram") {
-      const stage2Response = await openai.chat.completions.create({
-        model: "gpt-5-mini",
-        max_completion_tokens: 512,
-        messages: [
-          {
-            role: "user",
-            content: socialStage2InstagramPrompt(profile, framework),
-          },
-        ],
-      });
-      const stage2Text = stage2Response.choices[0]?.message?.content ?? "{}";
+      const stage2Text = await generate(socialStage2InstagramPrompt(profile, framework));
       try {
-        const parsed = JSON.parse(stage2Text) as {
-          caption: string;
-          hashtags: string[];
-        };
+        const cleaned = stage2Text.replace(/```json\n?|\n?```/g, "").trim();
+        const parsed = JSON.parse(cleaned) as { caption: string; hashtags: string[] };
         instagramCaption = parsed.caption ?? "";
         hashtags = parsed.hashtags ?? [];
       } catch {
@@ -83,17 +66,7 @@ router.post("/social", async (req, res) => {
         hashtags = [];
       }
     } else {
-      const stage2Response = await openai.chat.completions.create({
-        model: "gpt-5-mini",
-        max_completion_tokens: 512,
-        messages: [
-          {
-            role: "user",
-            content: socialStage2AdPrompt(profile, platform, framework),
-          },
-        ],
-      });
-      adCopy = stage2Response.choices[0]?.message?.content?.trim() ?? "";
+      adCopy = (await generate(socialStage2AdPrompt(profile, platform, framework))).trim();
     }
 
     res.json({ framework: frameworkStr, instagramCaption, adCopy, hashtags });
