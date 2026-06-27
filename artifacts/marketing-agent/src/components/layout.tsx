@@ -1,5 +1,5 @@
 import { Link, useLocation } from "wouter";
-import { Store, Megaphone, Star, MapPin, LogOut, LogIn } from "lucide-react";
+import { Store, Megaphone, Star, MapPin, LogOut } from "lucide-react";
 import { useClerk, useUser, Show } from "@clerk/react";
 import { Button } from "@/components/ui/button";
 
@@ -14,7 +14,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
     <div className="min-h-screen bg-background flex flex-col">
       <header className="border-b bg-card sticky top-0 z-50">
         <div className="container mx-auto px-4 h-16 flex items-center justify-between max-w-5xl">
-          <Link href="/" className="flex items-center gap-2 text-primary font-bold text-lg" data-testid="link-home">
+          <Link href="/dashboard" className="flex items-center gap-2 text-primary font-bold text-lg" data-testid="link-home">
             <Store className="h-5 w-5" />
             <span>LocalBrand</span>
           </Link>
@@ -50,7 +50,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
 
           <div className="flex items-center gap-3">
             <Show when="signed-in">
-              <span className="text-sm text-muted-foreground hidden sm:block">
+              <span className="text-sm text-muted-foreground hidden sm:block truncate max-w-[160px]">
                 {user?.emailAddresses?.[0]?.emailAddress}
               </span>
               <Button
@@ -63,20 +63,10 @@ export function Layout({ children }: { children: React.ReactNode }) {
                 Sign out
               </Button>
             </Show>
-            <Show when="signed-out">
-              <Link href="/sign-in">
-                <Button variant="outline" size="sm" className="flex items-center gap-1.5">
-                  <LogIn className="h-3.5 w-3.5" />
-                  Sign in
-                </Button>
-              </Link>
-              <Link href="/sign-up">
-                <Button size="sm">Get started</Button>
-              </Link>
-            </Show>
           </div>
         </div>
       </header>
+
       <main className="flex-1 container mx-auto px-4 py-8 max-w-5xl">
         {children}
       </main>

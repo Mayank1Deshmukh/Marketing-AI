@@ -2,13 +2,14 @@ import { useEffect, useRef } from "react";
 import { ClerkProvider, SignIn, SignUp, Show, useClerk, useAuth } from "@clerk/react";
 import { publishableKeyFromHost } from "@clerk/react/internal";
 import { shadcn } from "@clerk/themes";
-import { Switch, Route, useLocation, Router as WouterRouter, Redirect } from "wouter";
+import { Switch, Route, useLocation, Router as WouterRouter } from "wouter";
 import { QueryClient, QueryClientProvider, useQueryClient } from "@tanstack/react-query";
 import { setAuthTokenGetter } from "@workspace/api-client-react";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Layout } from "@/components/layout";
-import { Home } from "@/pages/home";
+import { Landing } from "@/pages/landing";
+import { Dashboard } from "@/pages/dashboard";
 import { GmbTrack } from "@/pages/gmb";
 import { ReviewTrack } from "@/pages/review";
 import { SocialTrack } from "@/pages/social";
@@ -85,7 +86,7 @@ const clerkAppearance = {
 function SignInPage() {
   const [location] = useLocation();
   const params = new URLSearchParams(location.split("?")[1] ?? "");
-  const redirectUrl = params.get("redirect_url") || "/";
+  const redirectUrl = params.get("redirect_url") || `${basePath}/dashboard`;
   return (
     <div className="flex min-h-[100dvh] items-center justify-center bg-background px-4">
       <SignIn
@@ -99,9 +100,17 @@ function SignInPage() {
 }
 
 function SignUpPage() {
+  const [location] = useLocation();
+  const params = new URLSearchParams(location.split("?")[1] ?? "");
+  const redirectUrl = params.get("redirect_url") || `${basePath}/dashboard`;
   return (
     <div className="flex min-h-[100dvh] items-center justify-center bg-background px-4">
-      <SignUp routing="path" path={`${basePath}/sign-up`} signInUrl={`${basePath}/sign-in`} />
+      <SignUp
+        routing="path"
+        path={`${basePath}/sign-up`}
+        signInUrl={`${basePath}/sign-in`}
+        fallbackRedirectUrl={redirectUrl}
+      />
     </div>
   );
 }
@@ -114,21 +123,27 @@ function ProtectedRoute({ component: Component }: { component: React.ComponentTy
         <Component />
       </Show>
       <Show when="signed-out">
-        <Redirect to={`/sign-in?redirect_url=${encodeURIComponent(location)}`} />
+        <SignInRedirect path={location} />
       </Show>
     </>
   );
 }
 
+function SignInRedirect({ path }: { path: string }) {
+  const [, navigate] = useLocation();
+  useEffect(() => {
+    navigate(`/sign-in?redirect_url=${encodeURIComponent(path)}`, { replace: true });
+  }, [path, navigate]);
+  return null;
+}
+
 /** Wires Clerk's getToken() into the API client so every request carries a Bearer token. */
 function ClerkAuthSync() {
   const { getToken } = useAuth();
-
   useEffect(() => {
     setAuthTokenGetter(() => getToken());
     return () => setAuthTokenGetter(null);
   }, [getToken]);
-
   return null;
 }
 
@@ -137,7 +152,6 @@ function ClerkQueryClientCacheInvalidator() {
   const { addListener } = useClerk();
   const qc = useQueryClient();
   const prevUserIdRef = useRef<string | null | undefined>(undefined);
-
   useEffect(() => {
     const unsubscribe = addListener(({ user }) => {
       const userId = user?.id ?? null;
@@ -148,7 +162,6 @@ function ClerkQueryClientCacheInvalidator() {
     });
     return unsubscribe;
   }, [addListener, qc]);
-
   return null;
 }
 
@@ -162,6 +175,8 @@ function AppRoutes() {
       appearance={clerkAppearance}
       signInUrl={`${basePath}/sign-in`}
       signUpUrl={`${basePath}/sign-up`}
+      afterSignInUrl={`${basePath}/dashboard`}
+      afterSignUpUrl={`${basePath}/dashboard`}
       localization={{
         signIn: {
           start: {
@@ -183,23 +198,35 @@ function AppRoutes() {
         <ClerkAuthSync />
         <ClerkQueryClientCacheInvalidator />
         <TooltipProvider>
-          <Layout>
-            <Switch>
-              <Route path="/" component={Home} />
-              <Route path="/sign-in/*?" component={SignInPage} />
-              <Route path="/sign-up/*?" component={SignUpPage} />
-              <Route path="/gmb">
-                <ProtectedRoute component={GmbTrack} />
-              </Route>
-              <Route path="/review">
-                <ProtectedRoute component={ReviewTrack} />
-              </Route>
-              <Route path="/social">
-                <ProtectedRoute component={SocialTrack} />
-              </Route>
-              <Route component={NotFound} />
-            </Switch>
-          </Layout>
+          <Switch>
+            {/* Public: landing page with its own full-page layout */}
+            <Route path="/" component={Landing} />
+
+            {/* Auth pages: centered, no app chrome */}
+            <Route path="/sign-in/*?" component={SignInPage} />
+            <Route path="/sign-up/*?" component={SignUpPage} />
+
+            {/* App pages: protected, wrapped in the app shell layout */}
+            <Route>
+              <Layout>
+                <Switch>
+                  <Route path="/dashboard">
+                    <ProtectedRoute component={Dashboard} />
+                  </Route>
+                  <Route path="/gmb">
+                    <ProtectedRoute component={GmbTrack} />
+                  </Route>
+                  <Route path="/review">
+                    <ProtectedRoute component={ReviewTrack} />
+                  </Route>
+                  <Route path="/social">
+                    <ProtectedRoute component={SocialTrack} />
+                  </Route>
+                  <Route component={NotFound} />
+                </Switch>
+              </Layout>
+            </Route>
+          </Switch>
           <Toaster />
         </TooltipProvider>
       </QueryClientProvider>
