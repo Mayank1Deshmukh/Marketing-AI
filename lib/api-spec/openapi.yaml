@@ -10,6 +10,8 @@ servers:
 tags:
   - name: health
     description: Health operations
+  - name: marketing
+    description: Marketing AI generation pipelines
 paths:
   /healthz:
     get:
@@ -24,6 +26,111 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  /marketing/gmb:
+    post:
+      operationId: generateGmbUpdate
+      tags: [marketing]
+      summary: Generate Google My Business update
+      description: Two-stage pipeline - enrichment then GMB post generation
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GmbInput"
+      responses:
+        "200":
+          description: Generated GMB update
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GmbResult"
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /marketing/review:
+    post:
+      operationId: generateReviewResponse
+      tags: [marketing]
+      summary: Generate a smart review response
+      description: Two-stage pipeline - sentiment parsing then response generation
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReviewInput"
+      responses:
+        "200":
+          description: Generated review response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReviewResult"
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /marketing/social:
+    post:
+      operationId: generateSocialAd
+      tags: [marketing]
+      summary: Generate hyper-local social ad copy
+      description: Two-stage pipeline - proximity frameworking then platform copy generation
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SocialInput"
+      responses:
+        "200":
+          description: Generated social ad copy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SocialResult"
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /marketing/regenerate:
+    post:
+      operationId: regenerateSection
+      tags: [marketing]
+      summary: Regenerate a specific output section with a tweak
+      description: Escape valve - reruns Stage 2 with original context plus user modifier
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegenerateInput"
+      responses:
+        "200":
+          description: Regenerated text block
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RegenerateResult"
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
 components:
   schemas:
     HealthStatus:
@@ -34,3 +141,158 @@ components:
       required:
         - status
 
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+      required:
+        - error
+
+    BusinessProfile:
+      type: object
+      description: Core business profile shared across all tracks
+      properties:
+        businessName:
+          type: string
+        city:
+          type: string
+        neighborhoods:
+          type: string
+        landmarks:
+          type: string
+        offerings:
+          type: string
+        brandVoice:
+          type: string
+          enum: [friendly, professional, playful, nononsense]
+        secretSauce:
+          type: string
+      required:
+        - businessName
+        - city
+        - neighborhoods
+        - offerings
+        - brandVoice
+        - secretSauce
+
+    GmbInput:
+      type: object
+      properties:
+        profile:
+          $ref: "#/components/schemas/BusinessProfile"
+      required:
+        - profile
+
+    GmbResult:
+      type: object
+      properties:
+        concepts:
+          type: array
+          items:
+            type: string
+          description: 2-3 localized SEO concepts from Stage 1
+        update:
+          type: string
+          description: Keyword-dense GMB post with local CTA from Stage 2
+        disclaimer:
+          type: string
+      required:
+        - concepts
+        - update
+        - disclaimer
+
+    ReviewInput:
+      type: object
+      properties:
+        profile:
+          $ref: "#/components/schemas/BusinessProfile"
+        reviewText:
+          type: ["string", "null"]
+          description: Optional review text to respond to
+      required:
+        - profile
+
+    ReviewResult:
+      type: object
+      properties:
+        sentiment:
+          type: ["string", "null"]
+          description: Parsed sentiment summary from Stage 1 (null if no review text)
+        highlights:
+          type: array
+          items:
+            type: string
+          description: Specific items of praise or friction extracted
+        response:
+          type: string
+          description: Brand-voice-matched review response from Stage 2
+      required:
+        - highlights
+        - response
+
+    SocialInput:
+      type: object
+      properties:
+        profile:
+          $ref: "#/components/schemas/BusinessProfile"
+        platform:
+          type: string
+          enum: [instagram, nextdoor, facebook]
+      required:
+        - profile
+        - platform
+
+    SocialResult:
+      type: object
+      properties:
+        framework:
+          type: string
+          description: Proximity copywriting framework from Stage 1
+        instagramCaption:
+          type: ["string", "null"]
+          description: Instagram caption with hashtags (if platform is instagram)
+        adCopy:
+          type: ["string", "null"]
+          description: Nextdoor/Facebook ad copy (if platform is nextdoor or facebook)
+        hashtags:
+          type: array
+          items:
+            type: string
+      required:
+        - framework
+        - hashtags
+
+    RegenerateInput:
+      type: object
+      properties:
+        track:
+          type: string
+          enum: [gmb, review, social]
+          description: Which track this output came from
+        originalPrompt:
+          type: string
+          description: The original system/user prompt used to generate the text
+        originalOutput:
+          type: string
+          description: The original generated text block
+        tweakModifier:
+          type: string
+          description: User's requested modification (e.g. "Make it shorter")
+        profile:
+          $ref: "#/components/schemas/BusinessProfile"
+      required:
+        - track
+        - originalPrompt
+        - originalOutput
+        - tweakModifier
+        - profile
+
+    RegenerateResult:
+      type: object
+      properties:
+        output:
+          type: string
+          description: The rewritten text block
+      required:
+        - output
