@@ -1,18 +1,24 @@
 import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
-import { useGenerateGmbUpdate } from "@workspace/api-client-react";
+import { useGenerateGmbUpdate, useGetProfile } from "@workspace/api-client-react";
 import { MapPin, Info } from "lucide-react";
-import { getProfile, BusinessProfile } from "@/lib/profile";
+import { resolveProfileId } from "@/lib/profile";
+import type { Profile } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { CopyButton } from "@/components/copy-button";
 import { EscapeValve } from "@/components/escape-valve";
 
 export function GmbTrack() {
   const [_, setLocation] = useLocation();
-  const [profile, setProfile] = useState<BusinessProfile | null>(null);
-  
+
+  const profileId = resolveProfileId();
+  const { data: profile, isLoading: isLoadingProfile } = useGetProfile(
+    profileId ?? "",
+    { query: { enabled: !!profileId, queryKey: profileId ? ["profile", profileId] : [] } },
+  );
+
   const generateGmb = useGenerateGmbUpdate();
   const [result, setResult] = useState<{
     concepts: string[];
@@ -21,24 +27,36 @@ export function GmbTrack() {
   } | null>(null);
 
   useEffect(() => {
-    const p = getProfile();
-    if (!p) {
+    if (!profileId) {
       setLocation("/");
-    } else {
-      setProfile(p);
     }
-  }, [setLocation]);
+  }, [profileId, setLocation]);
 
-  if (!profile) return null;
+  if (!profileId) return null;
+  if (isLoadingProfile) {
+    return (
+      <div className="max-w-3xl mx-auto space-y-6">
+        <Skeleton className="h-8 w-1/3" />
+        <Skeleton className="h-32 w-full" />
+      </div>
+    );
+  }
+  if (!profile) {
+    return (
+      <div className="max-w-3xl mx-auto text-center py-12">
+        <p className="text-muted-foreground">No profile found. <Button variant="link" onClick={() => setLocation("/")}>Create one first.</Button></p>
+      </div>
+    );
+  }
 
   const handleGenerate = () => {
     generateGmb.mutate(
-      { data: { profile } },
+      { data: { profile: mapProfileToBusinessProfile(profile) } },
       {
         onSuccess: (data) => {
           setResult(data);
-        }
-      }
+        },
+      },
     );
   };
 
@@ -55,8 +73,8 @@ export function GmbTrack() {
       <Card className="border-border/60 shadow-sm overflow-hidden">
         <div className="bg-secondary/50 p-4 border-b flex items-center justify-between">
           <div className="text-sm font-medium">Generating for: <span className="text-primary font-bold">{profile.businessName}</span></div>
-          <Button 
-            onClick={handleGenerate} 
+          <Button
+            onClick={handleGenerate}
             disabled={generateGmb.isPending}
             data-testid="button-generate-gmb"
           >
@@ -87,7 +105,7 @@ export function GmbTrack() {
                 <ul className="space-y-2 mb-4">
                   {result.concepts.map((concept, i) => (
                     <li key={i} className="text-sm flex items-start gap-2">
-                      <span className="text-accent mt-0.5">•</span>
+                      <span className="text-accent mt-0.5">&#8226;</span>
                       <span>{concept}</span>
                     </li>
                   ))}
@@ -107,12 +125,12 @@ export function GmbTrack() {
                 <div className="whitespace-pre-wrap text-base leading-relaxed bg-white dark:bg-black/10 p-5 rounded-lg border border-border shadow-sm">
                   {result.update}
                 </div>
-                
-                <EscapeValve 
+
+                <EscapeValve
                   track="gmb"
                   originalPrompt="Generate Google My Business update based on concepts"
                   originalOutput={result.update}
-                  profile={profile}
+                  profile={mapProfileToBusinessProfile(profile)}
                   onRegenerated={(newText) => setResult({ ...result, update: newText })}
                   testIdSuffix="gmb"
                 />
@@ -129,4 +147,16 @@ export function GmbTrack() {
       </Card>
     </div>
   );
+}
+
+function mapProfileToBusinessProfile(p: Profile) {
+  return {
+    businessName: p.businessName,
+    city: p.city,
+    neighborhoods: p.neighborhoods,
+    landmarks: p.landmarks,
+    offerings: p.offerings,
+    brandVoice: p.brandVoice,
+    secretSauce: p.secretSauce,
+  };
 }

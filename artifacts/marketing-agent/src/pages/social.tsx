@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
-import { useGenerateSocialAd } from "@workspace/api-client-react";
-import { SocialInputPlatform } from "@workspace/api-client-react/src/generated/api.schemas";
+import { useGenerateSocialAd, useGetProfile } from "@workspace/api-client-react";
+import type { SocialInputPlatform, Profile } from "@workspace/api-client-react";
 import { Megaphone, Target } from "lucide-react";
-import { getProfile, BusinessProfile } from "@/lib/profile";
+import { resolveProfileId } from "@/lib/profile";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -13,9 +13,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 
 export function SocialTrack() {
   const [_, setLocation] = useLocation();
-  const [profile, setProfile] = useState<BusinessProfile | null>(null);
   const [platform, setPlatform] = useState<SocialInputPlatform>("instagram");
-  
+
+  const profileId = resolveProfileId();
+  const { data: profile, isLoading: isLoadingProfile } = useGetProfile(
+    profileId ?? "",
+    { query: { enabled: !!profileId, queryKey: profileId ? ["profile", profileId] : [] } },
+  );
+
   const generateAd = useGenerateSocialAd();
   const [result, setResult] = useState<{
     framework: string;
@@ -25,24 +30,36 @@ export function SocialTrack() {
   } | null>(null);
 
   useEffect(() => {
-    const p = getProfile();
-    if (!p) {
+    if (!profileId) {
       setLocation("/");
-    } else {
-      setProfile(p);
     }
-  }, [setLocation]);
+  }, [profileId, setLocation]);
 
-  if (!profile) return null;
+  if (!profileId) return null;
+  if (isLoadingProfile) {
+    return (
+      <div className="max-w-3xl mx-auto space-y-6">
+        <Skeleton className="h-8 w-1/3" />
+        <Skeleton className="h-32 w-full" />
+      </div>
+    );
+  }
+  if (!profile) {
+    return (
+      <div className="max-w-3xl mx-auto text-center py-12">
+        <p className="text-muted-foreground">No profile found. <Button variant="link" onClick={() => setLocation("/")}>Create one first.</Button></p>
+      </div>
+    );
+  }
 
   const handleGenerate = () => {
     generateAd.mutate(
-      { data: { profile, platform } },
+      { data: { profile: mapProfileToBusinessProfile(profile), platform } },
       {
         onSuccess: (data) => {
           setResult(data);
-        }
-      }
+        },
+      },
     );
   };
 
@@ -73,8 +90,8 @@ export function SocialTrack() {
               </SelectContent>
             </Select>
           </div>
-          <Button 
-            onClick={handleGenerate} 
+          <Button
+            onClick={handleGenerate}
             disabled={generateAd.isPending}
             className="w-full sm:w-auto"
             data-testid="button-generate-social"
@@ -108,7 +125,7 @@ export function SocialTrack() {
                   {result.framework}
                 </div>
               </div>
-              
+
               <div className="p-6">
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="text-sm font-bold text-primary uppercase tracking-wider">Final Output: Ad Copy</h3>
@@ -117,7 +134,7 @@ export function SocialTrack() {
                 <div className="whitespace-pre-wrap text-base leading-relaxed bg-white dark:bg-black/10 p-5 rounded-lg border border-border shadow-sm mb-4">
                   {finalCopy}
                 </div>
-                
+
                 {result.hashtags.length > 0 && (
                   <div className="flex flex-wrap gap-2 mb-6">
                     {result.hashtags.map((tag, i) => (
@@ -127,15 +144,15 @@ export function SocialTrack() {
                     ))}
                   </div>
                 )}
-                
-                <EscapeValve 
+
+                <EscapeValve
                   track="social"
                   originalPrompt={`Generate ${platform} ad copy using framework`}
                   originalOutput={finalCopy || ""}
-                  profile={profile}
+                  profile={mapProfileToBusinessProfile(profile)}
                   onRegenerated={(newText) => setResult({
                     ...result,
-                    [platform === "instagram" ? "instagramCaption" : "adCopy"]: newText
+                    [platform === "instagram" ? "instagramCaption" : "adCopy"]: newText,
                   })}
                   testIdSuffix="social"
                 />
@@ -152,4 +169,16 @@ export function SocialTrack() {
       </Card>
     </div>
   );
+}
+
+function mapProfileToBusinessProfile(p: Profile) {
+  return {
+    businessName: p.businessName,
+    city: p.city,
+    neighborhoods: p.neighborhoods,
+    landmarks: p.landmarks,
+    offerings: p.offerings,
+    brandVoice: p.brandVoice,
+    secretSauce: p.secretSauce,
+  };
 }

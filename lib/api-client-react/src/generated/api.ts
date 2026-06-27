@@ -24,6 +24,8 @@ import type {
   GmbInput,
   GmbResult,
   HealthStatus,
+  Profile,
+  ProfileInput,
   RegenerateInput,
   RegenerateResult,
   ReviewInput,
@@ -136,6 +138,155 @@ export function useHealthCheck<TData = Awaited<ReturnType<typeof healthCheck>>, 
 
 
 
+
+export const getGetProfileUrl = (id: string,) => {
+
+
+
+
+  return `/api/profile/${id}`
+}
+
+/**
+ * Fetch a business profile by its UUID
+ * @summary Get a saved business profile
+ */
+export const getProfile = async (id: string, options?: RequestInit): Promise<Profile> => {
+
+  return customFetch<Profile>(getGetProfileUrl(id),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetProfileQueryKey = (id: string,) => {
+    return [
+    `/api/profile/${id}`
+    ] as const;
+    }
+
+
+export const getGetProfileQueryOptions = <TData = Awaited<ReturnType<typeof getProfile>>, TError = ErrorType<ErrorResponse>>(id: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getProfile>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetProfileQueryKey(id);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getProfile>>> = ({ signal }) => getProfile(id, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: id !== null && id !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getProfile>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetProfileQueryResult = NonNullable<Awaited<ReturnType<typeof getProfile>>>
+export type GetProfileQueryError = ErrorType<ErrorResponse>
+
+
+/**
+ * @summary Get a saved business profile
+ */
+
+export function useGetProfile<TData = Awaited<ReturnType<typeof getProfile>>, TError = ErrorType<ErrorResponse>>(
+ id: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getProfile>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetProfileQueryOptions(id,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getSaveProfileUrl = () => {
+
+
+
+
+  return `/api/profile`
+}
+
+/**
+ * Upserts a business profile into Supabase. Returns the saved profile including its UUID.
+ * @summary Save or update a business profile
+ */
+export const saveProfile = async (profileInput: ProfileInput, options?: RequestInit): Promise<Profile> => {
+
+  return customFetch<Profile>(getSaveProfileUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(profileInput)
+  }
+);}
+
+
+
+
+export const getSaveProfileMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof saveProfile>>, TError,{data: BodyType<ProfileInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof saveProfile>>, TError,{data: BodyType<ProfileInput>}, TContext> => {
+
+const mutationKey = ['saveProfile'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof saveProfile>>, {data: BodyType<ProfileInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  saveProfile(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SaveProfileMutationResult = NonNullable<Awaited<ReturnType<typeof saveProfile>>>
+    export type SaveProfileMutationBody = BodyType<ProfileInput>
+    export type SaveProfileMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Save or update a business profile
+ */
+export const useSaveProfile = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof saveProfile>>, TError,{data: BodyType<ProfileInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof saveProfile>>,
+        TError,
+        {data: BodyType<ProfileInput>},
+        TContext
+      > => {
+      return useMutation(getSaveProfileMutationOptions(options));
+    }
 
 export const getGenerateGmbUpdateUrl = () => {
 

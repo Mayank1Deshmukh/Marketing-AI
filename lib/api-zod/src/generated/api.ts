@@ -18,6 +18,55 @@ export const HealthCheckResponse = zod.object({
 
 
 /**
+ * Fetch a business profile by its UUID
+ * @summary Get a saved business profile
+ */
+export const GetProfileParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+export const GetProfileResponse = zod.object({
+  "id": zod.string(),
+  "businessName": zod.string(),
+  "city": zod.string(),
+  "neighborhoods": zod.string(),
+  "landmarks": zod.string().optional(),
+  "offerings": zod.string(),
+  "brandVoice": zod.enum(['friendly', 'professional', 'playful', 'nononsense']),
+  "secretSauce": zod.string(),
+  "updatedAt": zod.string()
+}).describe('Business profile with database id and timestamp')
+
+
+/**
+ * Upserts a business profile into Supabase. Returns the saved profile including its UUID.
+ * @summary Save or update a business profile
+ */
+export const SaveProfileBody = zod.object({
+  "id": zod.string().optional(),
+  "businessName": zod.string(),
+  "city": zod.string(),
+  "neighborhoods": zod.string(),
+  "landmarks": zod.string().optional(),
+  "offerings": zod.string(),
+  "brandVoice": zod.enum(['friendly', 'professional', 'playful', 'nononsense']),
+  "secretSauce": zod.string()
+}).describe('Input for saving a business profile')
+
+export const SaveProfileResponse = zod.object({
+  "id": zod.string(),
+  "businessName": zod.string(),
+  "city": zod.string(),
+  "neighborhoods": zod.string(),
+  "landmarks": zod.string().optional(),
+  "offerings": zod.string(),
+  "brandVoice": zod.enum(['friendly', 'professional', 'playful', 'nononsense']),
+  "secretSauce": zod.string(),
+  "updatedAt": zod.string()
+}).describe('Business profile with database id and timestamp')
+
+
+/**
  * Two-stage pipeline - enrichment then GMB post generation
  * @summary Generate Google My Business update
  */

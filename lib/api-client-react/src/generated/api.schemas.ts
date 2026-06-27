@@ -128,3 +128,52 @@ export interface RegenerateResult {
   output: string;
 }
 
+export type ProfileBrandVoice = typeof ProfileBrandVoice[keyof typeof ProfileBrandVoice];
+
+
+export const ProfileBrandVoice = {
+  friendly: 'friendly',
+  professional: 'professional',
+  playful: 'playful',
+  nononsense: 'nononsense',
+} as const;
+
+/**
+ * Business profile with database id and timestamp
+ */
+export interface Profile {
+  id: string;
+  businessName: string;
+  city: string;
+  neighborhoods: string;
+  landmarks?: string;
+  offerings: string;
+  brandVoice: ProfileBrandVoice;
+  secretSauce: string;
+  updatedAt: string;
+}
+
+export type ProfileInputBrandVoice = typeof ProfileInputBrandVoice[keyof typeof ProfileInputBrandVoice];
+
+
+export const ProfileInputBrandVoice = {
+  friendly: 'friendly',
+  professional: 'professional',
+  playful: 'playful',
+  nononsense: 'nononsense',
+} as const;
+
+/**
+ * Input for saving a business profile
+ */
+export interface ProfileInput {
+  id?: string;
+  businessName: string;
+  city: string;
+  neighborhoods: string;
+  landmarks?: string;
+  offerings: string;
+  brandVoice: ProfileInputBrandVoice;
+  secretSauce: string;
+}
+

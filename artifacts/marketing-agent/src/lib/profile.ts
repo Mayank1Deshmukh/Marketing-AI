@@ -14,21 +14,61 @@ export const BusinessProfileSchema = z.object({
 
 export type BusinessProfile = z.infer<typeof BusinessProfileSchema>;
 
-export const BIZ_PROFILE_KEY = "biz_profile";
+export const PROFILE_ID_KEY = "biz_profile_id";
 
-export function getProfile(): BusinessProfile | null {
+/**
+ * Reads the ?profile=UUID parameter from the current URL query string.
+ */
+export function getProfileIdFromUrl(): string | null {
+  const params = new URLSearchParams(window.location.search);
+  const id = params.get("profile");
+  return id && id.length > 0 ? id : null;
+}
+
+/**
+ * Gets the stored profile ID from localStorage.
+ */
+export function getProfileIdFromStorage(): string | null {
   try {
-    const raw = localStorage.getItem(BIZ_PROFILE_KEY);
-    if (!raw) return null;
-    const data = JSON.parse(raw);
-    const result = BusinessProfileSchema.safeParse(data);
-    if (result.success) return result.data;
-    return null;
-  } catch (e) {
+    return localStorage.getItem(PROFILE_ID_KEY);
+  } catch {
     return null;
   }
 }
 
-export function saveProfile(profile: BusinessProfile) {
-  localStorage.setItem(BIZ_PROFILE_KEY, JSON.stringify(profile));
+/**
+ * Resolves the profile ID: URL param takes priority, then localStorage fallback.
+ */
+export function resolveProfileId(): string | null {
+  return getProfileIdFromUrl() ?? getProfileIdFromStorage();
+}
+
+/**
+ * Saves the profile ID to localStorage and appends it to the URL as a query param.
+ */
+export function persistProfileId(id: string) {
+  try {
+    localStorage.setItem(PROFILE_ID_KEY, id);
+  } catch {
+    // ignore storage errors
+  }
+
+  const url = new URL(window.location.href);
+  url.searchParams.set("profile", id);
+  window.history.replaceState({}, "", url.toString());
+}
+
+/**
+ * Clears the stored profile ID from localStorage and the URL.
+ */
+export function clearProfileId() {
+  try {
+    localStorage.removeItem(PROFILE_ID_KEY);
+  } catch {
+    // ignore storage errors
+  }
+
+  const url = new URL(window.location.href);
+  url.searchParams.delete("profile");
+  window.history.replaceState({}, "", url.toString());
 }

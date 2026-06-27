@@ -12,6 +12,8 @@ tags:
     description: Health operations
   - name: marketing
     description: Marketing AI generation pipelines
+  - name: profile
+    description: Business profile persistence
 paths:
   /healthz:
     get:
@@ -26,6 +28,70 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  /profile/{id}:
+    get:
+      operationId: getProfile
+      tags: [profile]
+      summary: Get a saved business profile
+      description: Fetch a business profile by its UUID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Profile found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Profile"
+        "404":
+          description: Profile not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /profile:
+    post:
+      operationId: saveProfile
+      tags: [profile]
+      summary: Save or update a business profile
+      description: Upserts a business profile into Supabase. Returns the saved profile including its UUID.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProfileInput"
+      responses:
+        "201":
+          description: Profile saved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Profile"
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
 
   /marketing/gmb:
     post:
@@ -296,3 +362,65 @@ components:
           description: The rewritten text block
       required:
         - output
+
+    Profile:
+      type: object
+      description: Business profile with database id and timestamp
+      properties:
+        id:
+          type: string
+        businessName:
+          type: string
+        city:
+          type: string
+        neighborhoods:
+          type: string
+        landmarks:
+          type: string
+        offerings:
+          type: string
+        brandVoice:
+          type: string
+          enum: [friendly, professional, playful, nononsense]
+        secretSauce:
+          type: string
+        updatedAt:
+          type: string
+      required:
+        - id
+        - businessName
+        - city
+        - neighborhoods
+        - offerings
+        - brandVoice
+        - secretSauce
+        - updatedAt
+
+    ProfileInput:
+      type: object
+      description: Input for saving a business profile
+      properties:
+        id:
+          type: string
+        businessName:
+          type: string
+        city:
+          type: string
+        neighborhoods:
+          type: string
+        landmarks:
+          type: string
+        offerings:
+          type: string
+        brandVoice:
+          type: string
+          enum: [friendly, professional, playful, nononsense]
+        secretSauce:
+          type: string
+      required:
+        - businessName
+        - city
+        - neighborhoods
+        - offerings
+        - brandVoice
+        - secretSauce

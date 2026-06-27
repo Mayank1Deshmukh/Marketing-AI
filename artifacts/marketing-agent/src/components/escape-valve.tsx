@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useRegenerateSection } from "@workspace/api-client-react";
-import { RegenerateInputTrack, BusinessProfile } from "@workspace/api-client-react/src/generated/api.schemas";
+import type { RegenerateInputTrack, BusinessProfile } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { RefreshCcw } from "lucide-react";
