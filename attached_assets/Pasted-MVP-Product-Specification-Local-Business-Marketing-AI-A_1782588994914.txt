@@ -1,0 +1,96 @@
+MVP Product Specification: Local Business Marketing AI Agent
+Core Product Philosophy
+Local businesses do not need global marketing strategy or viral concepts; they need consistent, hyper-local execution. This product provides immediate value by generating platform-specific copy tailored to a business's exact neighborhood and unique differentiators, without the overhead of complex scheduling tools or direct social media API integrations.
+
+Primary Action: "Copy to Clipboard" for manual posting. No Meta or Google OAuth required for MVP.
+
+Architecture: Modular, multi-stage LLM pipelines split by specific user tasks.
+
+Persistence Story: Minimal-friction data persistence via browser localStorage. On repeat visits, the app reads from local storage to automatically pre-populate the business profile, letting the user jump straight to generation.
+
+1. The Input Layer (Global Context + Intent)
+The onboarding interface captures the baseline profile once and preserves it across browser sessions.
+
+Core Business Profile
+Business Name: (e.g., Joe’s Artisanal Bakery)
+
+Geographic Blueprint: Specific city/state (East Austin, TX) and targeted neighborhoods (Plaza Saltillo, Holly).
+
+Local Landmarks & Proximity Anchors (Optional Text): Cross-streets, neighborhood touchpoints, or physical anchors (e.g., Right on Chicon St, across from the library, 2 blocks from the East 6th target).
+
+Core Offerings: Broad category and key products (Sourdough, Croissants).
+
+Brand Voice (Dropdown): Friendly & Casual | Professional | Playful | No-nonsense.
+
+The Secret Sauce (Free Text): "What is one thing your regulars always say about you?" (e.g., Our sourdough takes 36 hours to ferment or The owner grew up in Oaxaca).
+
+Intent Selector ("What do you need today?")
+The dashboard unbundles the output so the user is never overwhelmed by a wall of generic text. They select one track per session:
+
+Draft a Google Business Profile Update
+
+Respond to a Customer Review
+
+Write a Hyper-Local Social Ad
+
+2. Modular Track Pipelines
+Each track utilizes a two-stage LLM pipeline to separate context enrichment from final copy formatting.
+
+Track A: Google My Business (GMB) Updates
+Goal: Drive local SEO proximity ranking on Google Maps.
+
+Stage 1 (Enrichment): The LLM blends the core business profile, location landmarks, and "Secret Sauce." It surfaces 2–3 localized SEO concepts.
+
+Product Guardrail: Below these concepts, display a UI disclaimer: "Suggested local search concepts. We recommend verifying search volume in Google Search Console or a free tool like Ubersuggest."
+
+Stage 2 (Generation): Outputs a short, keyword-dense update, plus an explicit local Call To Action (e.g., "Call Now" or "Get Directions").
+
+Track B: Smart Review Responder
+Goal: Diffuse negative feedback or appreciate positive community engagement instantly.
+
+Additional Input Field: A free-text box labeled: "Paste the review text here (Optional)".
+
+Stage 1 (Sentiment Parsing): If text is provided, the LLM parses specific points of praise (e.g., "the blueberry muffins") or friction (e.g., "the wait line"). If empty, it bypasses custom parsing and routes to the fallback generation path.
+
+Stage 2 (Generation): Generates a response matching the selected Brand Voice, directly addressing the specific items highlighted in Stage 1.
+
+Fallback Path Guardrail: If no review text was pasted, the LLM must explicitly inject the core business category, Brand Voice, and Secret Sauce into the generated templates. This prevents hollow, generic text and ensures a fallback template for a plumbing company never sounds like one generated for a bakery.
+
+Track C: Hyper-Local Ads / Social Copy
+Goal: Drive conversion within a strict 5-mile radius.
+
+Stage 1 (Proximity Frameworking): The LLM structures the user-provided neighborhoods and landmarks into copywriting frameworks.
+
+System Prompt Guardrail: The LLM is strictly instructed to only use geographic details explicitly provided by the user in the input profile. It is forbidden from inventing or guessing local cross-streets, parks, or physical landmarks to prevent breaking user trust through geographical hallucinations.
+
+Stage 2 (Generation): Outputs platform-ready copy (Instagram caption with hashtag suggestions or Nextdoor/Facebook ad copy) that leverages the validated proximity hooks (e.g., "Hey East Austin neighbors! Tired of grocery store bread? We're right on Chicon St across from the library...").
+
+3. UI Features & The Escape Valve
+To ensure the product doesn't feel brittle when an LLM misses the mark slightly, every output block includes an active feedback loop.
+
++-------------------------------------------------------------+
+|  GENERATED OUTPUT                                           |
+|  "Hey East Austin! Fresh sourdough is out of the oven..."   |
+|                                                             |
+|  [ Copy to Clipboard ]                                      |
++-------------------------------------------------------------+
+|  Need a tweak?                                              |
+|  [ e.g., "Make it less formal" or "Mention the patio"     ] |
+|  [ Regenerate This Section ]                                |
++-------------------------------------------------------------+
+Copy to Clipboard Button: A one-click button next to every final text block.
+
+Inline Regeneration Box: A small free-text field directly under the generated output. The user can type a quick modification note (e.g., "Make it shorter," "Don't mention the croissants").
+
+The Escape Valve Logic: Clicking "Regenerate" fires a targeted API call that passes the original prompt, the original output, and the user's tweak modifier back to Stage 2 to rewrite only that specific text block.
+
+4. Explicitly Out of Scope (Post-MVP)
+These features are deferred because they introduce OAuth complexity, third-party API dependencies, or heavy persistence requirements that would extend the build timeline without validating the core value proposition first.
+
+Direct API scheduling or publishing to Meta/Google accounts.
+
+Automatic review monitoring via scrapers, webhooks, or active API polling.
+
+Multi-week automated content calendars requiring relational database engines.
+
+Scraping competitor social media profiles or local maps data for automated trend analysis.
