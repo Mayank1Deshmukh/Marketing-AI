@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 60" fill="none">
+  <rect width="200" height="60" rx="8" fill="none"/>
+  <rect x="8" y="14" width="32" height="32" rx="6" fill="hsl(186,60%,20%)"/>
+  <path d="M16 30 L24 22 L32 30 L30 30 L30 38 L26 38 L26 33 L22 33 L22 38 L18 38 L18 30 Z" fill="white"/>
+  <text x="50" y="38" font-family="'Plus Jakarta Sans', sans-serif" font-weight="700" font-size="22" fill="hsl(186,60%,20%)">LocalBrand</text>
+</svg>

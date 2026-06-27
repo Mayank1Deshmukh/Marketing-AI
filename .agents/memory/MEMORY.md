@@ -1,0 +1,3 @@
+- [Clerk Auth Setup](clerk-auth-setup.md) — Clerk provisioned (Replit-managed); requireAuth guards /api/marketing/* and /api/profile/*; health check stays public.
+- [Supabase Node20 Fix](supabase-node20.md) — Supabase Realtime requires `ws` package on Node <22; pass it via `realtime: { transport: ws }` in createClient options.
+- [Artifact Workflow Port Conflicts](artifact-workflow-ports.md) — Never create manual workflows that claim the same ports as artifact-managed workflows; they conflict on restart.
