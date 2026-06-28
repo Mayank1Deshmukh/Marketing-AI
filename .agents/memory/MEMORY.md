@@ -1,3 +1,5 @@
 - [Clerk Auth Setup](clerk-auth-setup.md) — Clerk provisioned (Replit-managed); requireAuth guards /api/marketing/* and /api/profile/*; health check stays public.
 - [Supabase Node20 Fix](supabase-node20.md) — Supabase Realtime requires `ws` package on Node <22; pass it via `realtime: { transport: ws }` in createClient options.
 - [Artifact Workflow Port Conflicts](artifact-workflow-ports.md) — Never create manual workflows that claim the same ports as artifact-managed workflows; they conflict on restart.
+- [Supabase camelCase mapping](supabase-camelcase.md) — Supabase returns snake_case rows; always run through toProfile() transformer before sending to client or marketing routes will get undefined fields and return 400.
+- [API server rebuild required](api-rebuild.md) — API server only compiles on workflow start; backend code changes require restarting the artifacts/api-server workflow to take effect.

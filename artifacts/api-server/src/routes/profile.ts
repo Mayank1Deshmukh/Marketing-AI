@@ -6,6 +6,21 @@ import { supabase } from "../lib/supabase";
 const router = Router();
 const TABLE = "business_profiles";
 
+/** Converts a Supabase snake_case row into the camelCase Profile shape the client expects. */
+function toProfile(row: Record<string, unknown>) {
+  return {
+    id: row.id,
+    businessName: row.business_name,
+    city: row.city,
+    neighborhoods: row.neighborhoods,
+    landmarks: row.landmarks ?? null,
+    offerings: row.offerings,
+    brandVoice: row.brand_voice,
+    secretSauce: row.secret_sauce,
+    updatedAt: row.updated_at,
+  };
+}
+
 /**
  * Derives a deterministic UUID from a Clerk user ID.
  * Same user always maps to the same profile row — no schema migration needed.
@@ -46,7 +61,7 @@ router.get("/profile/current", async (req, res) => {
     return;
   }
 
-  res.json(data);
+  res.json(toProfile(data as Record<string, unknown>));
 });
 
 /**
@@ -79,7 +94,7 @@ router.get("/profile/:id", async (req, res) => {
     return;
   }
 
-  res.json(data);
+  res.json(toProfile(data as Record<string, unknown>));
 });
 
 /**
@@ -129,7 +144,7 @@ router.post("/profile", async (req, res) => {
     return;
   }
 
-  res.status(201).json(data);
+  res.status(201).json(toProfile(data as Record<string, unknown>));
 });
 
 export default router;
