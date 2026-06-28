@@ -16,7 +16,7 @@ export function useMyProfile() {
 
   return useQuery<Profile>({
     queryKey: MY_PROFILE_QUERY_KEY,
-    queryFn: () => customFetch<Profile>("/api/profile/me"),
+    queryFn: () => customFetch<Profile>("/api/profile/current"),
     enabled: !!isSignedIn,
     retry: (count, error: unknown) => {
       if ((error as { status?: number })?.status === 404) return false;

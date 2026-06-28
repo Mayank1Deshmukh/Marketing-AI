@@ -22,10 +22,11 @@ function userToProfileId(clerkUserId: string): string {
 }
 
 /**
- * GET /profile/me
+ * GET /profile/current
  * Fetch the signed-in user's business profile (keyed by Clerk userId).
+ * Uses a non-UUID path so it can never conflict with GET /profile/:id.
  */
-router.get("/profile/me", async (req, res) => {
+router.get("/profile/current", async (req, res) => {
   const { userId } = getAuth(req);
   const profileId = userToProfileId(userId!);
 
