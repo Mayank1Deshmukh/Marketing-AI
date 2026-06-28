@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useLocation } from "wouter";
 import { useGenerateSocialAd } from "@workspace/api-client-react";
 import type { SocialInputPlatform, Profile } from "@workspace/api-client-react";
-import { Megaphone, Target } from "lucide-react";
+import { Download, ImageIcon, Megaphone, RefreshCw, Target } from "lucide-react";
 import { useMyProfile } from "@/hooks/useMyProfile";
 import { useHistory } from "@/hooks/useHistory";
 import { Button } from "@/components/ui/button";
@@ -12,6 +12,33 @@ import { CopyButton } from "@/components/copy-button";
 import { EscapeValve } from "@/components/escape-valve";
 import { HistoryPanel } from "@/components/history-panel";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+
+const PLATFORM_DIMENSIONS: Record<SocialInputPlatform, { width: number; height: number; label: string }> = {
+  instagram: { width: 1080, height: 1080, label: "Instagram square" },
+  facebook:  { width: 1200, height: 628,  label: "Facebook landscape" },
+  nextdoor:  { width: 1200, height: 900,  label: "Nextdoor post" },
+};
+
+function buildImagePrompt(profile: ReturnType<typeof mapProfile>, platform: SocialInputPlatform, adCopy: string) {
+  const offerings = profile.offerings?.split(",")[0]?.trim() ?? "local business";
+  const platformStyle: Record<SocialInputPlatform, string> = {
+    instagram: "vibrant Instagram lifestyle photography, warm aesthetic",
+    facebook: "friendly community Facebook ad photo, approachable",
+    nextdoor: "authentic neighborhood photo, local community feel",
+  };
+  const lines = [
+    `Professional ${platformStyle[platform]}`,
+    `for a local ${offerings} business called "${profile.businessName}" in ${profile.city}`,
+    profile.landmarks ? `near ${profile.landmarks}` : "",
+    "no text overlay, no logos, photorealistic, high quality commercial photography",
+    "warm natural lighting, inviting atmosphere",
+  ].filter(Boolean);
+  return lines.join(", ");
+}
+
+function buildPollinationsUrl(prompt: string, width: number, height: number, seed: number) {
+  return `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?width=${width}&height=${height}&nologo=true&seed=${seed}&model=flux`;
+}
 
 export function SocialTrack() {
   const [_, setLocation] = useLocation();
@@ -26,6 +53,10 @@ export function SocialTrack() {
     adCopy?: string | null;
     hashtags: string[];
   } | null>(null);
+
+  const [imageUrl, setImageUrl] = useState<string | null>(null);
+  const [imageLoading, setImageLoading] = useState(false);
+  const [imageSeed, setImageSeed] = useState(() => Math.floor(Math.random() * 999999));
 
   if (isLoadingProfile) {
     return (
@@ -50,6 +81,8 @@ export function SocialTrack() {
   }
 
   const handleGenerate = () => {
+    setResult(null);
+    setImageUrl(null);
     generateAd.mutate(
       { data: { profile: mapProfile(profile), platform } },
       {
@@ -62,6 +95,39 @@ export function SocialTrack() {
         },
       },
     );
+  };
+
+  const handleGenerateImage = (newSeed?: number) => {
+    if (!profile || !result) return;
+    const mapped = mapProfile(profile);
+    const copy = (platform === "instagram" ? result.instagramCaption : result.adCopy) ?? "";
+    const prompt = buildImagePrompt(mapped, platform, copy);
+    const seed = newSeed ?? imageSeed;
+    const { width, height } = PLATFORM_DIMENSIONS[platform];
+    setImageUrl(buildPollinationsUrl(prompt, width, height, seed));
+    setImageLoading(true);
+  };
+
+  const handleRegenerateImage = () => {
+    const newSeed = Math.floor(Math.random() * 999999);
+    setImageSeed(newSeed);
+    handleGenerateImage(newSeed);
+  };
+
+  const handleDownload = async () => {
+    if (!imageUrl) return;
+    try {
+      const resp = await fetch(imageUrl);
+      const blob = await resp.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${profile.businessName?.replace(/\s+/g, "-").toLowerCase() ?? "ad"}-${platform}.jpg`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      window.open(imageUrl, "_blank");
+    }
   };
 
   const finalCopy = platform === "instagram" ? result?.instagramCaption : result?.adCopy;
@@ -80,7 +146,7 @@ export function SocialTrack() {
         <div className="p-4 border-b bg-card flex flex-col sm:flex-row sm:items-end gap-4 justify-between">
           <div className="space-y-2 flex-1">
             <label className="text-sm font-medium">Target Platform</label>
-            <Select value={platform} onValueChange={(val) => setPlatform(val as SocialInputPlatform)}>
+            <Select value={platform} onValueChange={(val) => { setPlatform(val as SocialInputPlatform); setResult(null); setImageUrl(null); }}>
               <SelectTrigger className="w-full sm:w-[200px]" data-testid="select-platform">
                 <SelectValue placeholder="Select platform" />
               </SelectTrigger>
@@ -178,6 +244,72 @@ export function SocialTrack() {
                   }}
                   testIdSuffix="social"
                 />
+              </div>
+
+              {/* ── Image Generation Section ── */}
+              <div className="p-6 bg-slate-50/60 dark:bg-slate-900/10">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+                    <ImageIcon className="h-4 w-4" /> Ad Image
+                    <span className="text-xs font-normal normal-case ml-1 text-muted-foreground/60">
+                      ({PLATFORM_DIMENSIONS[platform].label})
+                    </span>
+                  </h3>
+                  <div className="flex items-center gap-2">
+                    {imageUrl && !imageLoading && (
+                      <>
+                        <Button size="sm" variant="outline" onClick={handleRegenerateImage} className="gap-1.5">
+                          <RefreshCw className="h-3.5 w-3.5" /> Regenerate
+                        </Button>
+                        <Button size="sm" variant="outline" onClick={handleDownload} className="gap-1.5">
+                          <Download className="h-3.5 w-3.5" /> Download
+                        </Button>
+                      </>
+                    )}
+                    {!imageUrl && (
+                      <Button
+                        size="sm"
+                        onClick={() => handleGenerateImage()}
+                        className="gap-1.5"
+                        data-testid="button-generate-image"
+                      >
+                        <ImageIcon className="h-3.5 w-3.5" />
+                        Generate Image
+                      </Button>
+                    )}
+                  </div>
+                </div>
+
+                {imageLoading && (
+                  <div className="relative rounded-xl overflow-hidden border border-border/50 bg-white dark:bg-black/10">
+                    <Skeleton className="w-full aspect-square" />
+                    <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 text-muted-foreground">
+                      <div className="h-8 w-8 rounded-full border-2 border-purple-400 border-t-transparent animate-spin" />
+                      <p className="text-sm font-medium">Creating your ad image…</p>
+                      <p className="text-xs opacity-60">Usually takes 10–20 seconds</p>
+                    </div>
+                  </div>
+                )}
+
+                {imageUrl && (
+                  <div className={`rounded-xl overflow-hidden border border-border/50 shadow-sm ${imageLoading ? "hidden" : "block"}`}>
+                    <img
+                      src={imageUrl}
+                      alt={`${platform} ad image for ${profile.businessName}`}
+                      className="w-full object-cover"
+                      onLoad={() => setImageLoading(false)}
+                      onError={() => setImageLoading(false)}
+                    />
+                  </div>
+                )}
+
+                {!imageUrl && (
+                  <div className="rounded-xl border border-dashed border-border/60 bg-white dark:bg-black/10 p-10 text-center text-muted-foreground">
+                    <ImageIcon className="h-10 w-10 mx-auto mb-3 opacity-30" />
+                    <p className="text-sm">Click "Generate Image" to create an AI photo for your ad.</p>
+                    <p className="text-xs opacity-60 mt-1">Powered by Pollinations AI — free, no sign-up needed.</p>
+                  </div>
+                )}
               </div>
             </div>
           )}
