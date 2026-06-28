@@ -3,6 +3,7 @@ import { useLocation } from "wouter";
 import { useGenerateReviewResponse } from "@workspace/api-client-react";
 import { Star, MessageSquareQuote } from "lucide-react";
 import { useMyProfile } from "@/hooks/useMyProfile";
+import { useHistory } from "@/hooks/useHistory";
 import type { Profile } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -10,11 +11,13 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
 import { CopyButton } from "@/components/copy-button";
 import { EscapeValve } from "@/components/escape-valve";
+import { HistoryPanel } from "@/components/history-panel";
 
 export function ReviewTrack() {
   const [_, setLocation] = useLocation();
   const [reviewText, setReviewText] = useState("");
   const { data: profile, isLoading: isLoadingProfile } = useMyProfile();
+  const history = useHistory("review");
 
   const generateResponse = useGenerateReviewResponse();
   const [result, setResult] = useState<{
@@ -35,17 +38,26 @@ export function ReviewTrack() {
   if (!profile) {
     return (
       <div className="max-w-3xl mx-auto text-center py-12">
-        <p className="text-muted-foreground">No profile found. <Button variant="link" onClick={() => setLocation("/")}>Create one first.</Button></p>
+        <p className="text-muted-foreground">
+          No profile found.{" "}
+          <Button variant="link" onClick={() => setLocation("/dashboard")}>
+            Create one first.
+          </Button>
+        </p>
       </div>
     );
   }
 
   const handleGenerate = () => {
     generateResponse.mutate(
-      { data: { profile: mapProfileToBusinessProfile(profile), reviewText: reviewText.trim() || undefined } },
+      { data: { profile: mapProfile(profile), reviewText: reviewText.trim() || undefined } },
       {
         onSuccess: (data) => {
           setResult(data);
+          history.addItem(data.response, {
+            sentiment: data.sentiment,
+            reviewSnippet: reviewText.slice(0, 80),
+          });
         },
       },
     );
@@ -65,20 +77,22 @@ export function ReviewTrack() {
         <div className="p-6 border-b bg-card">
           <label className="block text-sm font-medium mb-2">Customer Review Text (Optional)</label>
           <Textarea
-            placeholder="Paste the customer's review here to get a specific response..."
+            placeholder="Paste the customer's review here to get a specific response…"
             value={reviewText}
             onChange={(e) => setReviewText(e.target.value)}
             className="min-h-[100px] resize-y mb-4"
             data-testid="input-review-text"
           />
           <div className="flex items-center justify-between">
-            <div className="text-sm text-muted-foreground">Voice: <span className="font-medium text-foreground capitalize">{profile.brandVoice}</span></div>
+            <div className="text-sm text-muted-foreground">
+              Voice: <span className="font-medium text-foreground capitalize">{profile.brandVoice}</span>
+            </div>
             <Button
               onClick={handleGenerate}
               disabled={generateResponse.isPending}
               data-testid="button-generate-review"
             >
-              {generateResponse.isPending ? "Drafting..." : "Draft Reply"}
+              {generateResponse.isPending ? "Drafting…" : "Draft Reply"}
             </Button>
           </div>
         </div>
@@ -121,7 +135,6 @@ export function ReviewTrack() {
                   </ul>
                 </div>
               </div>
-
               <div className="p-6">
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="text-sm font-bold text-primary uppercase tracking-wider">Final Output: Your Reply</h3>
@@ -130,13 +143,15 @@ export function ReviewTrack() {
                 <div className="whitespace-pre-wrap text-base leading-relaxed bg-white dark:bg-black/10 p-5 rounded-lg border border-border shadow-sm">
                   {result.response}
                 </div>
-
                 <EscapeValve
                   track="review"
                   originalPrompt="Draft review response based on analysis"
                   originalOutput={result.response}
-                  profile={mapProfileToBusinessProfile(profile)}
-                  onRegenerated={(newText) => setResult({ ...result, response: newText })}
+                  profile={mapProfile(profile)}
+                  onRegenerated={(newText) => {
+                    setResult({ ...result, response: newText });
+                    history.addItem(newText, { sentiment: result.sentiment });
+                  }}
                   testIdSuffix="review"
                 />
               </div>
@@ -150,11 +165,17 @@ export function ReviewTrack() {
           )}
         </CardContent>
       </Card>
+
+      <HistoryPanel
+        items={history.items}
+        onClear={history.clearHistory}
+        label="Recent Review Replies"
+      />
     </div>
   );
 }
 
-function mapProfileToBusinessProfile(p: Profile) {
+function mapProfile(p: Profile) {
   return {
     businessName: p.businessName,
     city: p.city,

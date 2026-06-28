@@ -3,16 +3,19 @@ import { useLocation } from "wouter";
 import { useGenerateGmbUpdate } from "@workspace/api-client-react";
 import { MapPin, Info } from "lucide-react";
 import { useMyProfile } from "@/hooks/useMyProfile";
+import { useHistory } from "@/hooks/useHistory";
 import type { Profile } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { CopyButton } from "@/components/copy-button";
 import { EscapeValve } from "@/components/escape-valve";
+import { HistoryPanel } from "@/components/history-panel";
 
 export function GmbTrack() {
   const [_, setLocation] = useLocation();
   const { data: profile, isLoading: isLoadingProfile } = useMyProfile();
+  const history = useHistory("gmb");
 
   const generateGmb = useGenerateGmbUpdate();
   const [result, setResult] = useState<{
@@ -33,17 +36,25 @@ export function GmbTrack() {
   if (!profile) {
     return (
       <div className="max-w-3xl mx-auto text-center py-12">
-        <p className="text-muted-foreground">No profile found. <Button variant="link" onClick={() => setLocation("/")}>Create one first.</Button></p>
+        <p className="text-muted-foreground">
+          No profile found.{" "}
+          <Button variant="link" onClick={() => setLocation("/dashboard")}>
+            Create one first.
+          </Button>
+        </p>
       </div>
     );
   }
 
   const handleGenerate = () => {
     generateGmb.mutate(
-      { data: { profile: mapProfileToBusinessProfile(profile) } },
+      { data: { profile: mapProfile(profile) } },
       {
         onSuccess: (data) => {
           setResult(data);
+          history.addItem(data.update, {
+            concepts: data.concepts,
+          });
         },
       },
     );
@@ -61,15 +72,18 @@ export function GmbTrack() {
 
       <Card className="border-border/60 shadow-sm overflow-hidden">
         <div className="bg-secondary/50 p-4 border-b flex items-center justify-between">
-          <div className="text-sm font-medium">Generating for: <span className="text-primary font-bold">{profile.businessName}</span></div>
+          <div className="text-sm font-medium">
+            Generating for: <span className="text-primary font-bold">{profile.businessName}</span>
+          </div>
           <Button
             onClick={handleGenerate}
             disabled={generateGmb.isPending}
             data-testid="button-generate-gmb"
           >
-            {generateGmb.isPending ? "Generating..." : "Generate Post"}
+            {generateGmb.isPending ? "Generating…" : "Generate Post"}
           </Button>
         </div>
+
         <CardContent className="p-0">
           {generateGmb.isPending && (
             <div className="p-6 space-y-6">
@@ -114,13 +128,15 @@ export function GmbTrack() {
                 <div className="whitespace-pre-wrap text-base leading-relaxed bg-white dark:bg-black/10 p-5 rounded-lg border border-border shadow-sm">
                   {result.update}
                 </div>
-
                 <EscapeValve
                   track="gmb"
                   originalPrompt="Generate Google My Business update based on concepts"
                   originalOutput={result.update}
-                  profile={mapProfileToBusinessProfile(profile)}
-                  onRegenerated={(newText) => setResult({ ...result, update: newText })}
+                  profile={mapProfile(profile)}
+                  onRegenerated={(newText) => {
+                    setResult({ ...result, update: newText });
+                    history.addItem(newText, { concepts: result.concepts });
+                  }}
                   testIdSuffix="gmb"
                 />
               </div>
@@ -134,11 +150,17 @@ export function GmbTrack() {
           )}
         </CardContent>
       </Card>
+
+      <HistoryPanel
+        items={history.items}
+        onClear={history.clearHistory}
+        label="Recent GMB Posts"
+      />
     </div>
   );
 }
 
-function mapProfileToBusinessProfile(p: Profile) {
+function mapProfile(p: Profile) {
   return {
     businessName: p.businessName,
     city: p.city,

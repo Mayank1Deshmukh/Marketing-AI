@@ -4,17 +4,20 @@ import { useGenerateSocialAd } from "@workspace/api-client-react";
 import type { SocialInputPlatform, Profile } from "@workspace/api-client-react";
 import { Megaphone, Target } from "lucide-react";
 import { useMyProfile } from "@/hooks/useMyProfile";
+import { useHistory } from "@/hooks/useHistory";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { CopyButton } from "@/components/copy-button";
 import { EscapeValve } from "@/components/escape-valve";
+import { HistoryPanel } from "@/components/history-panel";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 export function SocialTrack() {
   const [_, setLocation] = useLocation();
   const [platform, setPlatform] = useState<SocialInputPlatform>("instagram");
   const { data: profile, isLoading: isLoadingProfile } = useMyProfile();
+  const history = useHistory("social");
 
   const generateAd = useGenerateSocialAd();
   const [result, setResult] = useState<{
@@ -36,17 +39,26 @@ export function SocialTrack() {
   if (!profile) {
     return (
       <div className="max-w-3xl mx-auto text-center py-12">
-        <p className="text-muted-foreground">No profile found. <Button variant="link" onClick={() => setLocation("/")}>Create one first.</Button></p>
+        <p className="text-muted-foreground">
+          No profile found.{" "}
+          <Button variant="link" onClick={() => setLocation("/dashboard")}>
+            Create one first.
+          </Button>
+        </p>
       </div>
     );
   }
 
   const handleGenerate = () => {
     generateAd.mutate(
-      { data: { profile: mapProfileToBusinessProfile(profile), platform } },
+      { data: { profile: mapProfile(profile), platform } },
       {
         onSuccess: (data) => {
           setResult(data);
+          const output = platform === "instagram" ? data.instagramCaption : data.adCopy;
+          if (output) {
+            history.addItem(output, { platform, hashtags: data.hashtags });
+          }
         },
       },
     );
@@ -85,7 +97,7 @@ export function SocialTrack() {
             className="w-full sm:w-auto"
             data-testid="button-generate-social"
           >
-            {generateAd.isPending ? "Generating..." : "Generate Ad"}
+            {generateAd.isPending ? "Generating…" : "Generate Ad"}
           </Button>
         </div>
 
@@ -156,11 +168,14 @@ export function SocialTrack() {
                   track="social"
                   originalPrompt={`Generate ${platform} ad copy using framework`}
                   originalOutput={finalCopy || ""}
-                  profile={mapProfileToBusinessProfile(profile)}
-                  onRegenerated={(newText) => setResult({
-                    ...result,
-                    [platform === "instagram" ? "instagramCaption" : "adCopy"]: newText,
-                  })}
+                  profile={mapProfile(profile)}
+                  onRegenerated={(newText) => {
+                    setResult({
+                      ...result,
+                      [platform === "instagram" ? "instagramCaption" : "adCopy"]: newText,
+                    });
+                    history.addItem(newText, { platform });
+                  }}
                   testIdSuffix="social"
                 />
               </div>
@@ -174,11 +189,17 @@ export function SocialTrack() {
           )}
         </CardContent>
       </Card>
+
+      <HistoryPanel
+        items={history.items}
+        onClear={history.clearHistory}
+        label="Recent Social Ads"
+      />
     </div>
   );
 }
 
-function mapProfileToBusinessProfile(p: Profile) {
+function mapProfile(p: Profile) {
   return {
     businessName: p.businessName,
     city: p.city,
