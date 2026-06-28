@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useLocation } from "wouter";
 import { useGenerateSocialAd } from "@workspace/api-client-react";
 import type { SocialInputPlatform, Profile } from "@workspace/api-client-react";
-import { Download, ImageIcon, Megaphone, RefreshCw, Target } from "lucide-react";
+import { Download, ImageIcon, Megaphone, Pencil, RefreshCw, Target, Wand2 } from "lucide-react";
 import { useMyProfile } from "@/hooks/useMyProfile";
 import { useHistory } from "@/hooks/useHistory";
 import { Button } from "@/components/ui/button";
@@ -57,6 +57,8 @@ export function SocialTrack() {
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [imageLoading, setImageLoading] = useState(false);
   const [imageSeed, setImageSeed] = useState(() => Math.floor(Math.random() * 999999));
+  const [imagePrompt, setImagePrompt] = useState<string>("");
+  const [showPromptEditor, setShowPromptEditor] = useState(false);
 
   if (isLoadingProfile) {
     return (
@@ -92,6 +94,8 @@ export function SocialTrack() {
           if (output) {
             history.addItem(output, { platform, hashtags: data.hashtags });
           }
+          const mapped = mapProfile(profile);
+          setImagePrompt(buildImagePrompt(mapped, platform, output ?? ""));
         },
       },
     );
@@ -99,9 +103,7 @@ export function SocialTrack() {
 
   const handleGenerateImage = (newSeed?: number) => {
     if (!profile || !result) return;
-    const mapped = mapProfile(profile);
-    const copy = (platform === "instagram" ? result.instagramCaption : result.adCopy) ?? "";
-    const prompt = buildImagePrompt(mapped, platform, copy);
+    const prompt = imagePrompt || buildImagePrompt(mapProfile(profile), platform, (platform === "instagram" ? result.instagramCaption : result.adCopy) ?? "");
     const seed = newSeed ?? imageSeed;
     const { width, height } = PLATFORM_DIMENSIONS[platform];
     setImageUrl(buildPollinationsUrl(prompt, width, height, seed));
@@ -279,6 +281,50 @@ export function SocialTrack() {
                     )}
                   </div>
                 </div>
+
+                {result && (
+                  <div className="mb-4">
+                    <button
+                      onClick={() => setShowPromptEditor((v) => !v)}
+                      className="text-xs text-muted-foreground hover:text-purple-500 transition-colors flex items-center gap-1 mb-2"
+                    >
+                      {showPromptEditor ? "Hide" : "Edit"} image prompt
+                      <Pencil className="h-3 w-3" />
+                    </button>
+                    {showPromptEditor && (
+                      <div className="space-y-2">
+                        <textarea
+                          className="w-full min-h-[80px] text-sm p-3 rounded-md border border-border/50 bg-white dark:bg-black/10 focus:outline-none focus:ring-2 focus:ring-purple-400 resize-y"
+                          value={imagePrompt}
+                          onChange={(e) => setImagePrompt(e.target.value)}
+                          placeholder="Describe the image you want for your ad..."
+                        />
+                        <div className="flex items-center gap-2">
+                          <Button
+                            size="sm"
+                            variant="secondary"
+                            onClick={() => {
+                              setImagePrompt(buildImagePrompt(mapProfile(profile), platform, finalCopy ?? ""));
+                            }}
+                            className="gap-1"
+                          >
+                            <Wand2 className="h-3 w-3" /> Reset
+                          </Button>
+                          {!imageUrl && (
+                            <Button
+                              size="sm"
+                              onClick={() => handleGenerateImage()}
+                              className="gap-1"
+                              disabled={!imagePrompt.trim() || imageLoading}
+                            >
+                              <ImageIcon className="h-3 w-3" /> Generate
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 {imageLoading && (
                   <div className="relative rounded-xl overflow-hidden border border-border/50 bg-white dark:bg-black/10">
