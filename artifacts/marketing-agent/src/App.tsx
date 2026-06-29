@@ -175,8 +175,7 @@ function AppRoutes() {
       appearance={clerkAppearance}
       signInUrl={`${basePath}/sign-in`}
       signUpUrl={`${basePath}/sign-up`}
-      afterSignInUrl={`${basePath}/dashboard`}
-      afterSignUpUrl={`${basePath}/dashboard`}
+      fallbackRedirectUrl={`${basePath}/dashboard`}
       localization={{
         signIn: {
           start: {
