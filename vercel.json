@@ -1,6 +1,6 @@
 {
   "buildCommand": "pnpm --filter @workspace/marketing-agent run build",
-  "outputDirectory": "dist/public",
+  "outputDirectory": "artifacts/marketing-agent/dist/public",
   "installCommand": "pnpm install",
   "framework": null,
   "functions": {
